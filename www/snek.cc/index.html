@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Meta tags for character set and responsive design -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>snek.cc // portal (Local)</title>
+
+    <style>
+        /* CSS Custom Properties (Variables) for easy theme management */
+        :root {
+            --background-color: #fdf6e3; /* A warm, creamy off-white */
+            --text-color: #222222;      /* A soft, off-black */
+            --accent-color: #cb4b16;     /* A friendly, rustic orange */
+            --shadow-color: #222222;
+            --main-font: 'Poppins', sans-serif;
+        }
+
+        /* --- Self-Hosted Font Definition --- */
+        /* To use this local version, you must:
+            1. Download the Poppins font family (e.g., from Google Fonts).
+            2. Create a folder named 'fonts' in the same directory as this HTML file.
+            3. Place the font files 'Poppins-Regular.ttf' and 'Poppins-Bold.ttf' inside that folder.
+        */
+        @font-face {
+            font-family: 'Poppins';
+            font-style: normal;
+            font-weight: 400;
+            src: url('fonts/Poppins-Regular.ttf') format('truetype');
+        }
+        @font-face {
+            font-family: 'Poppins';
+            font-style: normal;
+            font-weight: 700;
+            src: url('fonts/Poppins-Bold.ttf') format('truetype');
+        }
+
+        /* --- Basic Reset & Body Styling --- */
+        *, *::before, *::after {
+            box-sizing: border-box; /* Ensures padding and border are included in the element's total width and height */
+        }
+
+        body {
+            font-family: var(--main-font);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            /* The body itself is transparent to allow the fixed canvas background to be visible */
+            background: transparent;
+        }
+
+        /* --- Background Canvas --- */
+        #snek-canvas {
+            position: fixed; /* Stays in place during scroll */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Places the canvas behind all other content */
+            background-color: var(--background-color);
+        }
+
+        /* --- Main Content --- */
+        .portal-container {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        /* --- Header --- */
+        .portal-header {
+            margin-bottom: 3rem;
+        }
+
+        .portal-header h1 {
+            font-size: 4rem;
+            letter-spacing: 2px;
+            margin: 0 0 0.5rem 0;
+            font-weight: 700;
+        }
+
+        .portal-header .subtitle {
+            font-size: 1.5rem;
+            margin: 0;
+            color: #93a1a1;
+            /* Required for character spans to behave correctly during animation */
+            display: inline-block;
+            min-height: 1.5rem; /* Prevents layout shift during animation */
+        }
+
+        /* --- Navigation & Chunky Buttons --- */
+        .service-nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .service-nav li {
+            margin-bottom: 1.5rem;
+        }
+
+        .chunky-btn {
+            display: inline-block;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: var(--main-font);
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 1rem 2.5rem;
+            border: 3px solid var(--text-color);
+            border-radius: 8px;
+            box-shadow: 6px 6px 0 var(--shadow-color);
+            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out; /* Smooth transition for interactions */
+        }
+
+        /* Interactive states for the button, excluding disabled ones */
+        .chunky-btn:not(.disabled):hover {
+            transform: translate(3px, 3px); /* Gives a "pushed" effect */
+            box-shadow: 3px 3px 0 var(--shadow-color);
+            background-color: #fffaf0;
+        }
+
+        .chunky-btn:not(.disabled):active {
+            transform: translate(6px, 6px); /* Deeper push for click */
+            box-shadow: 0 0 0 var(--shadow-color);
+        }
+
+        /* Style for a disabled button */
+        .chunky-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* --- Footer --- */
+        .portal-footer {
+            margin-top: 4rem;
+            font-size: 1rem;
+            color: #93a1a1;
+        }
+
+        /* --- Dark Mode (Class-based for Toggle) --- */
+        body.dark-mode {
+            --background-color: #2d2d2d; /* A dark, soft gray */
+            --text-color: #fdf6e3;      /* The original light background color */
+            --shadow-color: #fdf6e3;
+        }
+
+        body.dark-mode .portal-header .subtitle,
+        body.dark-mode .portal-footer {
+            color: #a1a1a1;
+        }
+
+        body.dark-mode .chunky-btn:not(.disabled):hover {
+            background-color: #3a3a3a; /* A slightly lighter dark gray */
+        }
+
+
+        /* --- Theme Toggle Button --- */
+        #theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            line-height: 1;
+            color: var(--text-color);
+        }
+
+        /* --- Responsive Design --- */
+        @media (max-width: 600px) {
+            .portal-header h1 {
+                font-size: 3rem;
+            }
+            .portal-header .subtitle {
+                font-size: 1.2rem;
+            }
+            .chunky-btn {
+                font-size: 1.2rem;
+                padding: 0.8rem 1.5rem;
+                width: 100%; /* Make buttons full-width on mobile */
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- This script runs immediately to set the theme and prevent a flash of incorrect colors -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (theme === 'dark' || (!theme && prefersDark)) {
+                document.body.classList.add('dark-mode');
+            }
+        })();
+    </script>
+
+    <!-- The background canvas element. The animation is handled by JavaScript. -->
+    <canvas id="snek-canvas"></canvas>
+
+    <!-- Main content container with ARIA role for accessibility -->
+    <main class="portal-container" role="main">
+
+        <!-- Theme toggle button -->
+        <button id="theme-toggle" aria-label="Toggle dark mode">
+            <!-- Icon will be set by JavaScript -->
+        </button>
+
+        <!-- Header section with ARIA role -->
+        <header class="portal-header" role="banner">
+            <h1>snek.cc 🐍</h1>
+            <!-- The subtitle now has a simple English default for NoScript users -->
+            <p class="subtitle" aria-live="polite">~ little snake ~</p>
+        </header>
+
+        <!-- Navigation section with ARIA role -->
+        <nav class="service-nav" role="navigation">
+            <ul>
+                <li><a href="https://constellation.snek.cc" class="chunky-btn ">constellation</a></li>
+            </ul>
+            <ul>
+                <li><a href="https://spacedust.snek.cc" class="chunky-btn">spacedust</a></li>
+            </ul>
+
+            <ul>
+                <li><a href="https://pdsls.snek.cc" class="chunky-btn">pdsls</a></li>
+            </ul>
+        </nav>
+
+        <!-- Footer section with ARIA role -->
+        <footer class="portal-footer" role="contentinfo">
+            <p>~ an experimental corner of the web ~</p>
+        </footer>
+
+    </main>
+
+    <script>
+        // Wait for the document to be fully loaded before running scripts
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- Theme Toggle Functionality ---
+            const themeToggle = document.getElementById('theme-toggle');
+            const body = document.body;
+
+            // Function to update the button icon based on the current theme
+            const updateToggleIcon = () => {
+                if (body.classList.contains('dark-mode')) {
+                    themeToggle.textContent = '☀️'; // Sun icon for dark mode
+                } else {
+                    themeToggle.textContent = '🌙'; // Moon icon for light mode
+                }
+            };
+
+            // Event listener for the toggle button
+            themeToggle.addEventListener('click', () => {
+                body.classList.toggle('dark-mode');
+
+                // Save the user's preference to localStorage
+                if (body.classList.contains('dark-mode')) {
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    localStorage.setItem('theme', 'light');
+                }
+                updateToggleIcon();
+            });
+
+            // Set the initial icon when the page loads
+            updateToggleIcon();
+
+
+            /**
+             * Animates an element's text with a cascading shuffle effect.
+             * @param {HTMLElement} element - The HTML element to animate.
+             * @param {string} newText - The target text to display.
+             * @returns {Promise} A promise that resolves when the animation is complete.
+             */
+            function cascadeShuffle(element, newText) {
+                // Define character sets for shuffling based on language
+                const latinChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+                const cjkChars = '日口木禾山水火土月人金女田力又一二三四五六七八九十'; // Common radicals/simple characters
+
+                // Regular expression to detect Chinese, Japanese, or Korean characters
+                const cjkRegex = /[\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff]/;
+
+                // Determine which character set to use for the animation
+                const useCjk = cjkRegex.test(newText);
+                const chars = useCjk ? cjkChars : latinChars;
+
+                const oldText = element.textContent || '';
+
+                // Return a promise to know when the animation has finished
+                const promise = new Promise(resolve => {
+                    const newChars = newText.split('');
+                    const oldChars = oldText.split('');
+                    const maxLength = Math.max(newChars.length, oldChars.length);
+                    element.textContent = ''; // Clear the element for new character spans
+
+                    let completedAnimations = 0;
+
+                    // If there's nothing to animate, resolve immediately.
+                    if (maxLength === 0) {
+                        resolve();
+                        return;
+                    }
+
+                    // Loop through each character position
+                    for (let i = 0; i < maxLength; i++) {
+                        const newChar = newChars[i] || '';
+
+                        // Create a <span> for each character to animate it individually
+                        const span = document.createElement('span');
+                        span.textContent = oldChars[i] || '';
+                        element.appendChild(span);
+
+                        // Stagger the animation start for each character to create a cascading effect
+                        setTimeout(() => {
+                            let iterations = 0;
+                            const totalIterations = 10; // Each character flips 10 times
+
+                            const interval = setInterval(() => {
+                                // Once the flips are done, set the final character
+                                if (iterations >= totalIterations) {
+                                    clearInterval(interval);
+                                    span.textContent = newChar;
+
+                                    // Check if all character animations are complete
+                                    completedAnimations++;
+                                    if (completedAnimations === maxLength) {
+                                        // A final cleanup to ensure the text is a single string, not spans
+                                        element.textContent = newText;
+                                        resolve(); // Resolve the promise
+                                    }
+                                } else {
+                                    // Pick a random character from the chosen set for the "flip"
+                                    span.textContent = chars.charAt(Math.floor(Math.random() * chars.length));
+                                }
+                                iterations++;
+                            }, 300); // Speed of each character's flip (slower)
+
+                        }, i * 125); // Stagger delay between each character's animation start
+                    }
+                });
+                return promise;
+            }
+
+
+            // --- Initialize and Run the Animation Loop ---
+            const subtitle = document.querySelector('.portal-header .subtitle');
+            const phrases = [
+                'へびちゃん',      // Japanese
+                '小蛇',          // Mandarin
+                'Schlängchen',   // German
+                'nathairín',     // Irish
+                'naheka liʻiliʻi' // Hawaiian
+            ];
+            let currentIndex = 0;
+
+            // A recursive function to create an endless animation loop
+            const runAnimationLoop = () => {
+                // Animate the subtitle to the phrase at the current index
+                cascadeShuffle(subtitle, phrases[currentIndex]).then(() => {
+                    // When the animation is done, update the index for the *next* loop
+                    currentIndex = (currentIndex + 1) % phrases.length;
+
+                    // Wait 3 seconds before starting the next animation
+                    setTimeout(runAnimationLoop, 3000);
+                });
+            };
+
+            // Start the animation loop
+            runAnimationLoop();
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
